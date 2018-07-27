@@ -39,8 +39,15 @@ public class Main {
 			//double sim2 = sim.getSimilarityForWordPair(sp[1], sp[1]);
 			//List<Map.Entry<String, Double>> word_sim = sim.getSimListForWord(word);
 			double sim0 = sim.getSimilarityForWordPair(sp[0], sp[1]);// / Math.min(sim1, sim2);
-			if (sim0 > 0) {
-				bw.write(line + " " + sim0);
+			double sim1 = sim.get2StepParaForWordPair(sp[0], sp[1]);
+			if (sim0 > 0 || sim1 > 0) {
+				double sim_value = sim0;
+				if (sim_value > 0 && sim1 > 0) {
+					sim_value = (sim_value + sim1) / 2.0;
+				} else if (sim_value == 0) {
+					sim_value = sim1;
+				}
+				bw.write(line + " " + sim_value);
 				bw.newLine();
 			}
 		}
@@ -115,16 +122,17 @@ public class Main {
 	static public void main(String [] args) throws IOException {
 		int step = 1;
 		int freqThreshold = 0;
-		getPara("wiki", 1, step, freqThreshold);
-		getPara("yago", 1, step, freqThreshold);
-		getPara("wiki", 2, step, freqThreshold);
-		getPara("yago", 2, step, freqThreshold);
+		//getPara("wiki", 1, step, freqThreshold);
+		//getPara("yago", 1, step, freqThreshold);
+		//getPara("wiki", 2, step, freqThreshold);
+		//getPara("yago", 2, step, freqThreshold);
 		getPara("wiki", 3, step, freqThreshold);
 		getPara("yago", 3, step, freqThreshold);
-		getPara("wiki", 4, step, freqThreshold);
-		getPara("yago", 4, step, freqThreshold);
-		getPara("wiki", 5, step, freqThreshold);
-		getPara("yago", 5, step, freqThreshold);
+		//getPara("wiki", 4, step, freqThreshold);
+		//getPara("yago", 4, step, freqThreshold);
+		//getPara("wiki", 5, step, freqThreshold);
+		//getPara("yago", 5, step, freqThreshold);
+		/*
 		step = 3;
 		getSyntag("wiki", 1, step, freqThreshold);
 		getSyntag("yago", 1, step, freqThreshold);
@@ -136,5 +144,6 @@ public class Main {
 		getSyntag("yago", 4, step, freqThreshold);
 		getSyntag("wiki", 5, step, freqThreshold);
 		getSyntag("yago", 5, step, freqThreshold);
+		*/
 	}
 }

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 
 import GraphbasedMethod.Node;
 
@@ -244,24 +245,10 @@ public class Graph {
 			return -1;
 		return nodeIndex.get(word);
 	}
-	
-	public double getParaSim (int index1, int index2) {
-    	if (index1 < 0 || index1 >= nodes.size() || index2 < 0 || index2 >= nodes.size())
-    		return 0;
-    	ArrayList<Integer> uSet = new ArrayList<Integer>();
-    	ArrayList<Integer> vSet = new ArrayList<Integer>();
-    	for (Iterator<Map.Entry<Integer, Integer>> itr = nodes.get(index1).inlinks.entrySet().iterator(); itr.hasNext();) {
-    		int v = itr.next().getKey();
-    		if (choped) {
-	    		if (!nodes.get(v).outlinks.containsKey(index1) || !nodes.get(v).outlinks.containsKey(index2))
-	    			continue;
-    		}
-    		if (nodes.get(index2).inlinks.containsKey(v))
-    			vSet.add(v);
-    	}
-    	if (vSet.size() == 0)
-    		return 0;
-    	for (Iterator<Map.Entry<Integer, Integer>> itr = nodes.get(index1).outlinks.entrySet().iterator(); itr.hasNext();) {
+
+	private ArrayList<Integer> getUSet(int index1, int index2) {
+		ArrayList<Integer> uSet = new ArrayList<Integer>();
+		for (Iterator<Map.Entry<Integer, Integer>> itr = nodes.get(index1).outlinks.entrySet().iterator(); itr.hasNext();) {
     		int u = itr.next().getKey();
     		if (choped) {
 	    		if (!nodes.get(u).inlinks.containsKey(index1) || !nodes.get(u).inlinks.containsKey(index2))
@@ -270,9 +257,32 @@ public class Graph {
     		if (nodes.get(index2).outlinks.containsKey(u))
     			uSet.add(u);
     	}
-    	if (uSet.size() == 0)
+		return uSet;
+	}
+
+	private ArrayList<Integer> getVSet(int index1, int index2) {
+		ArrayList<Integer> vSet = new ArrayList<Integer>();
+		for (Iterator<Map.Entry<Integer, Integer>> itr = nodes.get(index1).inlinks.entrySet().iterator(); itr.hasNext();) {
+    		int v = itr.next().getKey();
+    		if (choped) {
+	    		if (!nodes.get(v).outlinks.containsKey(index1) || !nodes.get(v).outlinks.containsKey(index2))
+	    			continue;
+    		}
+    		if (nodes.get(index2).inlinks.containsKey(v))
+    			vSet.add(v);
+    	}
+		return vSet;
+	}
+	
+	public double getParaSim (int index1, int index2) {
+    	if (index1 < 0 || index1 >= nodes.size() || index2 < 0 || index2 >= nodes.size())
     		return 0;
-    	
+    	ArrayList<Integer> uSet = getUSet(index1, index2);
+		if (uSet.size() == 0)
+    		return 0;
+    	ArrayList<Integer> vSet = getVSet(index1, index2);
+    	if (vSet.size() == 0)
+    		return 0;
     	double sum1 = 0;
     	double sum2 = 0;
     	for (int i=0; i<vSet.size(); i++) {
@@ -307,6 +317,112 @@ public class Graph {
     	return sum1*sum2*sum3*sum4 / Math.sqrt((double)(vSet.size() * uSet.size()));
     }
 
+	private ArrayList<HashMap<Integer, Double>> getInWords(int index) {
+		HashSet<Integer> inWords1 = new HashSet<Integer>();
+		for (Iterator<Map.Entry<Integer, Integer>> itr = nodes.get(index).inlinks.entrySet().iterator(); itr.hasNext();)
+			inWords1.add(itr.next().getKey());
+		HashMap<Integer, Double> inWordsToIndex = new HashMap<Integer, Double>();
+		HashMap<Integer, Double> indexToInWords = new HashMap<Integer, Double>();
+		for (Iterator<Integer> itr = inWords1.iterator(); itr.hasNext(); ) {
+			int mid = itr.next();
+			double proToIndex = nodes.get(index).inlinks.get(mid) / Double.valueOf(nodes.get(mid).outlinkCount);
+			double proToWord = nodes.get(index).inlinks.get(mid) / Double.valueOf(nodes.get(index).inlinkCount);
+			for (Iterator<Map.Entry<Integer, Integer>> itr1 = nodes.get(mid).inlinks.entrySet().iterator(); itr1.hasNext();) {
+				Map.Entry<Integer, Integer> entry = itr1.next();
+				int inword = entry.getKey();
+				int weight = entry.getValue();
+				double proToMid = weight / Double.valueOf(nodes.get(inword).outlinkCount);
+				double proToWord1 = weight / Double.valueOf(nodes.get(mid).inlinkCount);
+				if (!inWordsToIndex.containsKey(inword)) {
+					inWordsToIndex.put(inword, proToIndex * proToMid);
+					indexToInWords.put(inword, proToWord * proToWord1);
+				} else {
+					inWordsToIndex.put(inword, inWordsToIndex.get(inword) + proToIndex * proToMid);
+					indexToInWords.put(inword, indexToInWords.get(inword) + proToWord * proToWord1);
+				}	
+			}
+		}
+		ArrayList<HashMap<Integer, Double>> inWords = new ArrayList<HashMap<Integer, Double>>();
+		inWords.add(inWordsToIndex);
+		inWords.add(indexToInWords);
+		return inWords;
+	}
+
+	private ArrayList<HashMap<Integer, Double>> getOutWords(int index) {
+		HashSet<Integer> outWords1 = new HashSet<Integer>();
+		for (Iterator<Map.Entry<Integer, Integer>> itr = nodes.get(index).outlinks.entrySet().iterator(); itr.hasNext();)
+			outWords1.add(itr.next().getKey());
+		HashMap<Integer, Double> outWordsToIndex = new HashMap<Integer, Double>();
+		HashMap<Integer, Double> indexToOutWords = new HashMap<Integer, Double>();
+		for (Iterator<Integer> itr = outWords1.iterator(); itr.hasNext(); ) {
+			int mid = itr.next();
+			double proToIndex = nodes.get(index).outlinks.get(mid) / Double.valueOf(nodes.get(mid).inlinkCount);
+			double proToWord = nodes.get(index).outlinks.get(mid) / Double.valueOf(nodes.get(index).outlinkCount);
+			for (Iterator<Map.Entry<Integer, Integer>> itr1 = nodes.get(mid).outlinks.entrySet().iterator(); itr1.hasNext();) {
+				Map.Entry<Integer, Integer> entry = itr1.next();
+				int outword = entry.getKey();
+				int weight = entry.getValue();
+				double proToMid = weight / Double.valueOf(nodes.get(outword).inlinkCount);
+				double proToWord1 = weight / Double.valueOf(nodes.get(mid).outlinkCount);
+				if (!outWordsToIndex.containsKey(outword)) {
+					outWordsToIndex.put(outword, proToIndex * proToMid);
+					indexToOutWords.put(outword, proToWord * proToWord1);
+				} else {
+					outWordsToIndex.put(outword, outWordsToIndex.get(outword) + proToIndex * proToMid);
+					indexToOutWords.put(outword, indexToOutWords.get(outword) + proToWord * proToWord1);
+				}
+			}
+		}
+		ArrayList<HashMap<Integer, Double>> outWords = new ArrayList<HashMap<Integer, Double>>();
+		outWords.add(outWordsToIndex);
+		outWords.add(indexToOutWords);
+		return outWords;
+	}
+
+	public double getParaSimStep2(int index1, int index2) {
+    	if (index1 < 0 || index1 >= nodes.size() || index2 < 0 || index2 >= nodes.size())
+    		return 0;
+		ArrayList<HashMap<Integer, Double>> out1 = getOutWords(index1);
+		ArrayList<HashMap<Integer, Double>> out2 = getOutWords(index2);
+		ArrayList<HashMap<Integer, Double>> in1 = getInWords(index1);
+		ArrayList<HashMap<Integer, Double>> in2 = getInWords(index2);
+		if (out1.get(0).size() == 0 || out2.get(0).size() == 0 || in1.get(0).size() == 0 || in2.get(0).size() == 0)
+    		return 0;
+    	double sum1 = 0;
+    	double sum2 = 0;
+		double sum3 = 0;
+		double sum4 = 0;
+		double uNum = 0;
+		double vNum = 0;
+		HashMap<Integer, Double> outWordsToIndex1 = out1.get(0);
+		HashMap<Integer, Double> index1ToOutWords = out1.get(1);
+		HashMap<Integer, Double> outWordsToIndex2 = out2.get(0);
+		HashMap<Integer, Double> index2ToOutWords = out2.get(1);
+		HashMap<Integer, Double> inWordsToIndex1 = in1.get(0);
+		HashMap<Integer, Double> index1ToInWords = in1.get(1);
+		HashMap<Integer, Double> inWordsToIndex2 = in2.get(0);
+		HashMap<Integer, Double> index2ToInWords = in2.get(1);
+    	for (Iterator<Map.Entry<Integer, Double>> itr = outWordsToIndex1.entrySet().iterator(); itr.hasNext(); ) {
+			Map.Entry<Integer, Double> entry = itr.next();
+    		int v = entry.getKey();
+			if (!outWordsToIndex2.containsKey(v))
+				continue;
+			vNum += 1;
+			sum1 += entry.getValue() * index2ToOutWords.get(v);
+			sum2 += index1ToOutWords.get(v) * outWordsToIndex2.get(v);
+    	}
+		for (Iterator<Map.Entry<Integer, Double>> itr = inWordsToIndex1.entrySet().iterator(); itr.hasNext(); ) {
+			Map.Entry<Integer, Double> entry = itr.next();
+			int u = entry.getKey();
+			if (!inWordsToIndex2.containsKey(u))
+				continue;
+			uNum += 1;
+			sum3 += entry.getValue() * index2ToInWords.get(u);
+			sum4 += index1ToInWords.get(u) * inWordsToIndex2.get(u);
+		}
+    	return sum1*sum2*sum3*sum4 / Math.sqrt(vNum * uNum);
+    }
+
 	private HashMap<String, Double> cumNormalizeSim(List<HashMap<Integer, Double>> simList, int step) {
 		HashMap<String, Double> sim = new HashMap<String, Double>();
     	for (int i = 1; i <= step; i++) {
@@ -329,7 +445,6 @@ public class Graph {
 		}
     	return sim;
 	}
-
 
 	public HashMap<String, Double> getForwardSynSim(int fromIndex, int step) {
     	List<HashMap<Integer, Double>> simList = new ArrayList<HashMap<Integer,Double>>();

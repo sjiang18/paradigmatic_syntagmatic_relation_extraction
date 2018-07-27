@@ -62,6 +62,20 @@ public class Similarity {
 		return g.getParaSim(index1, index2);
 	}
 
+	public double get2StepParaForWordPair(String word1, String word2) {
+		int index1 = g.getIndex(word1);
+		if (index1 < 0){
+			if (word1.compareTo(word2) == 0)
+				return 1;
+			else
+				return 0;
+		}
+		int index2 = g.getIndex(word2);
+		if (index2 < 0)
+			return 0;
+		return g.getParaSimStep2(index1, index2);
+	}
+
 	public List<Map.Entry<String, Double>> getSimListForWord(String word) {
 		int fromIndex = g.getIndex(word);
 		if (fromIndex < 0)
